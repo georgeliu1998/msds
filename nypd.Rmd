@@ -1,0 +1,93 @@
+---
+title: "NYPD Shooting Data Analysis"
+author: ""
+date: "2023-01-29"
+output: pdf_document
+---
+
+## 1. Set up
+Note: the following R packages are used for this analysis. Please refer to the session info at the end of the report.
+
+```{r setup, include=TRUE, echo=TRUE}
+library(readr)
+library(tidyverse)
+library(lubridate)
+library(forecast)
+```
+
+
+
+## 2. Getting the Data
+Our data is from the City of New York website. Below we use the gien URL to download the csv file directly from the the site, and save the downloaded data into a dataframe named `df`.
+
+```{r getting_data, include=TRUE, echo=FALSE}
+url <- 'https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD'
+df <- read_csv(url)
+```
+## 3. Examinging the Data
+Next, let's examine the data by showing the basic structure of the data, and the summary statistics of the data:
+
+```{r examining_data, include=TRUE}
+str(df)
+summary(df)
+```
+
+Looking at the data, we see there is a date column that's shown as character type now and we'll need to change it to date to be able to properly extract date info form it. Also, there are null values in many fields, if we decided to use some of the fields, these will need to be dealt with. Next, we show the exact number of null values in all columns:
+
+```{r show_df, include=TRUE}
+#view(df)
+sapply(df, function(y) sum(length(which(is.na(y)))))
+```
+So, most columns don't have null values except for these columns: JURISDICTION_CODE, LOCATION_DESC, PERP_AGE_GROUP, PERP_SEX, PERP_RACE.
+
+## 4. Analyze Data
+Here, we'll investigate two questions:
+1. How does the number of incidents vary from boro to boro? In specific, which boro has the most incidents, which has the least?
+2. Over the last several years, what was the trend in incidents? Were things getting better or worse over the years?
+
+In order to answer these questions, we need to transform the data and then visaulize the result. Let's start with the boro question by calclating the number of incidents by boro, then we plot a bar plot to show the by boro difference:
+
+
+```{r incidents_by_boro, include=TRUE, echo=TRUE}
+incidents_by_boro <- df %>% 
+  select(INCIDENT_KEY, BORO) %>%
+  group_by(BORO) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+
+ggplot(data=incidents_by_boro, mapping=aes(x=BORO, y=count))+geom_bar(stat='identity')
+```
+
+Clearly, Brooklyn was the worst in terms of number of incidents, while Staten Island was the best. However, this was only the total number of accidents, without taking into account the population in each boro. Therefore, one futher area to look into would be the per unit population incidents rate, which may provide a clearer picture.
+
+Next, let's look at the by year incident change. We first need to find the year value by converting the date column to datetime format, then we can calcuate the number of incidents by year and make a lineplot to show the trend:
+
+```{r incidents_by_year, include=TRUE, echo=TRUE}
+df$date = mdy(df$OCCUR_DATE)
+
+incidents_by_year <- df %>% 
+    group_by(year = lubridate::floor_date(date, "year")) %>%
+    summarize(count=n())
+
+ggplot(data=incidents_by_year, mapping=aes(x=year, y=count)) + geom_line()
+```
+
+From the lineplot, we can see a clear downward trend of yearly incidents. However, this trend got reversed starting 2020.
+
+Next, we build a basic timeseries model to predict the yearly number of incidents:
+
+```{r model, include=TRUE, echo=TRUE}
+fit <- ets(incidents_by_year$count)
+forecast(fit)
+```
+
+
+## 5. Conclusion
+
+Our analysis shows that the boros with the most and least number of incidents were Brooklyn and Staten Island. Also the overal trend in the last several years was downward but things changed in around 2020. There may be potential bias in the analysis. First, the analysis may come from the data, data quality and collection issues may bring bias in the data. Second, our analysis was high level and may need further work to validate. For example, visually, we see the change in trend happened around 2020, but to be sure, we need to examine the exact number of incidents of those adjacent years from 2015 to 2021. Finally, the modeling process might be biased, it could be that we only used the number of incidents on a yearly basis as the input variable, while in reality there there might be others factors contributing to the change in number of incidents. 
+
+## 6. Session Info
+
+```{r sessioninfo, include=TRUE, echo=TRUE}
+sessionInfo()
+```
