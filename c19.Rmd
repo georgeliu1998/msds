@@ -1,0 +1,108 @@
+---
+title: "C19 Analysis"
+output: pdf_document
+date: "2023-01-31"
+---
+
+## 1. Set up
+Note: the following R packages are used for this analysis. Please refer to the session info at the end of the report.
+
+```{r setup, include=TRUE, echo=TRUE}
+library(readr)
+library(tidyverse)
+library(lubridate)
+library(forecast)
+library(patchwork)
+```
+
+## 2. Getting the Data
+```{r getting_data, include=TRUE, echo=FALSE, warning=FALSE}
+url_in <- 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/'
+file_names <- c(
+  "time_series_covid19_confirmed_global.csv",
+  "time_series_covid19_deaths_global.csv",
+  "time_series_covid19_confirmed_US.csv",  
+  "time_series_covid19_deaths_US.csv"
+  )
+urls <- str_c(url_in, file_names)
+
+#global_cases <- read_csv(urls[1])
+#global_deaths <- read_csv(urls[2])
+us_cases <- read_csv(urls[3])
+us_deaths <- read_csv(urls[4])
+```
+
+## 3. Examing and Wrangling the Data
+
+We'll convert the data from wide to long format and then join them together to have both cases and deaths data together.
+
+```{r wrangling_data, include=TRUE}
+us_cases_long <- us_cases %>% 
+  select(-c(UID, iso2, iso3, code3, FIPS, Admin2, Lat, Long_, Combined_Key)) %>% 
+  rename("province_state"="Province_State", "country_region"="Country_Region") %>% 
+  pivot_longer(cols=-c(province_state, country_region), names_to='date', values_to='cases')
+
+us_deaths_long <- us_deaths %>% 
+  select(-c(UID, iso2, iso3, code3, FIPS, Admin2, Lat, Long_, Combined_Key)) %>% 
+  rename("province_state"="Province_State", "country_region"="Country_Region", "population"="Population") %>% 
+  pivot_longer(cols=-c(province_state, country_region, population), names_to='date', values_to='deaths') 
+```
+
+```{r joining_data, include=TRUE} 
+us_cases_long$date <- as.Date(us_cases_long$date, format="%m/%d/%y")
+us_deaths_long$date <- as.Date(us_deaths_long$date, format="%m/%d/%y")
+
+florida_cases <- us_cases_long %>% 
+  filter(province_state=="Florida" & date <= as_date('2020-12-31')) %>% 
+  select(date, cases)
+florida_deaths <- us_deaths_long %>% 
+  filter(province_state=="Florida" & date <= as_date('2020-12-31')) %>% 
+  select(date, deaths, population)
+
+florida_cases <- florida_cases[1:345,]
+florida_deaths <- florida_deaths[1:345,]
+
+```
+
+## 4. Analyze the Data
+We'll use the data to answer the following questions:
+- In general, does the number of cases follow the number of deaths trend? We'll use the state of Florida's data to answer this question. 
+- How does the death/case rate differ across states?
+
+We'll then build a model to predict number of deaths given number of cases.
+
+First, let's plot the cases and deaths side by side:
+
+```{r visualizing_data_1, include=TRUE} 
+florida <- merge(florida_cases, florida_deaths, by="date")
+
+case_plot <- florida %>% ggplot(aes(x=date, y=cases)) + geom_line()
+deaths_plot <- florida %>% ggplot(aes(x=date, y=deaths)) + geom_line()
+
+case_plot + deaths_plot
+
+```
+Clearly, they move together. Now let's put them in the same plot:
+
+```{r visualizing_data_2, include=TRUE} 
+ggplot(florida, aes(x=date)) +
+         geom_line(aes(y=cases/30)) +
+         geom_line(aes(y=deaths))
+
+```
+Again, there's a correlation between the two.
+
+Next, let's build a model to predict deaths based on cases.
+```{r modeling, include=TRUE}
+lm(formula=deaths~cases, data=florida)
+```
+
+
+## 5. Conclusion
+In this analysis, we looked at the relationship between cases and deaths and the visualization showed there's a correlation betweem them. We also built a linear regression model to predict deaths based on cases.
+
+## 6. Session Info
+```{r sessioninfo, include=TRUE, echo=TRUE}
+sessionInfo()
+```
+
