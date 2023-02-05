@@ -101,6 +101,8 @@ lm(formula=deaths~cases, data=florida)
 ## 5. Conclusion
 In this analysis, we looked at the relationship between cases and deaths and the visualization showed there's a correlation betweem them. We also built a linear regression model to predict deaths based on cases.
 
+There can be bias in this analysis. The first possible bias is in the choice of data, since we decided to use only Florida's data in 2020, it may not represent the pattern for all states. Second, we only examined the correlation by looking at the visualization, this may not be accurate. Ideally, we should do correlation analysis between cases and deaths.
+
 ## 6. Session Info
 ```{r sessioninfo, include=TRUE, echo=TRUE}
 sessionInfo()
