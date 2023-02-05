@@ -16,6 +16,8 @@ library(patchwork)
 ```
 
 ## 2. Getting the Data
+We'll get the data from Johns Hopkins University on GitHub: https://github.com/CSSEGISandData/COVID-19.
+
 ```{r getting_data, include=TRUE, echo=FALSE, warning=FALSE}
 url_in <- 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/'
 file_names <- c(
@@ -33,8 +35,7 @@ us_deaths <- read_csv(urls[4])
 ```
 
 ## 3. Examing and Wrangling the Data
-
-We'll convert the data from wide to long format and then join them together to have both cases and deaths data together.
+After examing the data, we can see the data is in wide format. To make it ready for analysis and visualization, we'll convert the data from wide to long format and then join them together to have both cases and deaths data together.
 
 ```{r wrangling_data, include=TRUE}
 us_cases_long <- us_cases %>% 
